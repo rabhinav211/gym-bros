@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Report Simplifier</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Markdown renderer -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <button id="downloadBtn" class="header-btn" onclick="exportConversation()" title="Download Conversation">
+                    <i class="fas fa-download"></i>
+                    <span class="btn-text">Download</span>
+                </button>
+            </div>
+            <div class="header-center">
+                <h1><i class="fas fa-stethoscope"></i> MedSimplify</h1>
+                <p>AI-powered medical report assistant</p>
+            </div>
+            <div class="header-right">
+                <select id="languageSelect" class="language-selector">
+                    <option value="English">🇺🇸 English</option>
+                    <option value="Hindi">🇮🇳 हिंदी</option>
+                    <option value="Spanish">🇪🇸 Español</option>
+                    <option value="French">🇫🇷 Français</option>
+                    <option value="German">🇩🇪 Deutsch</option>
+                    <option value="Chinese">🇨🇳 中文</option>
+                    <option value="Japanese">🇯🇵 日本語</option>
+                    <option value="Arabic">🇸🇦 العربية</option>
+                </select>
+                <button id="themeToggle" class="header-btn" onclick="toggleTheme()" title="Toggle Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="menuToggle" class="header-btn mobile-only" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Menu -->
+        <div class="mobile-menu" id="mobileMenu">
+            <button onclick="exportConversation()">
+                <i class="fas fa-download"></i> Download Chat
+            </button>
+            <button onclick="clearSession()">
+                <i class="fas fa-trash"></i> Clear Session
+            </button>
+            <button onclick="toggleTTS()">
+                <i class="fas fa-volume-up"></i> <span id="ttsStatus">TTS: On</span>
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="upload-section" id="uploadSection">
+                <div class="upload-container">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3>Upload Medical Report</h3>
+                        <p>Drag & drop your PDF here or click to browse</p>
+                        <input type="file" id="fileInput" accept=".pdf" hidden>
+                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                            <i class="fas fa-file-pdf"></i> Choose PDF
+                        </button>
+                        <div class="upload-info">
+                            <small><i class="fas fa-info-circle"></i> Supports text and scanned PDFs up to 16MB</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Container -->
+            <div class="chat-container" id="chatContainer" style="display: none;">
+                <div class="chat-header">
+                    <div class="chat-title">
+                        <i class="fas fa-comments"></i>
+                        <span>Medical Chat Assistant</span>
+                    </div>
+                    <div class="chat-actions">
+                        <button class="action-btn" id="visualizeBtn" onclick="showVisualization()" title="View Lab Visualization" style="display: none;">
+                            <i class="fas fa-chart-bar"></i>
+                        </button>
+                        <button class="action-btn" onclick="toggleTTS()" title="Toggle Text-to-Speech">
+                            <i class="fas fa-volume-up" id="ttsIcon"></i>
+                        </button>
+                        <button class="action-btn" onclick="clearSession()" title="Clear Session">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Messages will be dynamically added here -->
+                </div>
+                
+                <!-- Typing Indicator -->
+                <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                    <div class="typing-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="typing-bubble">
+                        <div class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                        <small>Assistant is typing...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Bar (Fixed Bottom) -->
+        <div class="input-bar" id="inputBar" style="display: none;">
+            <div class="input-container">
+                <button class="input-btn" id="micBtn" onclick="toggleSpeechToText()" title="Voice Input">
+                    <i class="fas fa-microphone"></i>
+                </button>
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Ask about your medical report..."
+                        rows="1"
+                        maxlength="1000"
+                    ></textarea>
+                    <div class="input-footer">
+                        <span class="char-counter" id="charCounter">0/1000</span>
+                        <div class="quick-questions">
+                            <button class="quick-btn" onclick="setQuickQuestion('What do my results mean?')">
+                                Results?
+                            </button>
+                            <button class="quick-btn" onclick="setQuickQuestion('Any abnormal values?')">
+                                Abnormal?
+                            </button>
+                            <button class="quick-btn" onclick="setQuickQuestion('What should I do next?')">
+                                Next steps?
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()" disabled title="Send Message">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p><i class="fas fa-shield-alt"></i> Your privacy is protected. Reports are processed securely and not stored permanently.</p>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p id="loadingText">Processing your document...</p>
+            </div>
+        </div>
+
+        <!-- Toast Container -->
+        <div id="toastContainer" class="toast-container"></div>
+
+        <!-- Voice Recording Modal -->
+        <div class="voice-modal" id="voiceModal" style="display: none;">
+            <div class="voice-content">
+                <div class="voice-animation">
+                    <div class="voice-circle"></div>
+                    <div class="voice-circle"></div>
+                    <div class="voice-circle"></div>
+                </div>
+                <p>Listening... Speak now</p>
+                <button class="voice-stop" onclick="stopSpeechToText()">
+                    <i class="fas fa-stop"></i> Stop
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

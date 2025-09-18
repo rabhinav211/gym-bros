@@ -1,0 +1,1124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Results Visualization - MedSimplify</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Results page specific styles */
+        .results-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            min-height: 100vh;
+            background: var(--bg-secondary);
+        }
+        
+        .results-header {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+        
+        .results-header h1 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+            font-size: 2rem;
+        }
+        
+        .results-header p {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .summary-card {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .summary-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .summary-card.normal .icon {
+            color: var(--success-color);
+        }
+        
+        .summary-card.abnormal .icon {
+            color: var(--warning-color);
+        }
+        
+        .summary-card.critical .icon {
+            color: var(--danger-color);
+        }
+        
+        .summary-card .count {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+        
+        .summary-card .label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .chart-container {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-md);
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .chart-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .chart-controls {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .chart-toggle {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--primary-color);
+            background: transparent;
+            color: var(--primary-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .chart-toggle.active,
+        .chart-toggle:hover {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 400px;
+            margin-bottom: 1rem;
+        }
+        
+        .lab-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .lab-card {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            border-left: 4px solid var(--success-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Normal status - Green theme */
+        .lab-card.normal {
+            border-left-color: #10b981;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.03) 0%, var(--bg-primary) 100%);
+        }
+        
+        .lab-card.normal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(-45deg, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+        }
+        
+        /* Slightly Abnormal status - Orange theme */
+        .lab-card.slightly-abnormal {
+            border-left-color: #f59e0b;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, var(--bg-primary) 100%);
+        }
+        
+        .lab-card.slightly-abnormal::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(-45deg, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
+        }
+        
+        /* Critical status - Red theme */
+        .lab-card.critical {
+            border-left-color: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.03) 0%, var(--bg-primary) 100%);
+            box-shadow: var(--shadow-md), 0 0 0 1px rgba(239, 68, 68, 0.1);
+        }
+        
+        .lab-card.critical::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(-45deg, rgba(239, 68, 68, 0.1) 0%, transparent 70%);
+        }
+        
+        /* Legacy support for old class names */
+        .lab-card.abnormal {
+            border-left-color: var(--warning-color);
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.03) 0%, var(--bg-primary) 100%);
+        }
+        
+        .lab-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .lab-test-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .lab-status {
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .lab-status.normal {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .lab-status.slightly-abnormal {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        .lab-status.critical {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            animation: pulse-critical 2s infinite;
+        }
+        
+        /* Legacy support */
+        .lab-status.abnormal {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+        
+        @keyframes pulse-critical {
+            0%, 100% { box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 0 0 rgba(239, 68, 68, 0.4); }
+            50% { box-shadow: 0 2px 4px rgba(0,0,0,0.1), 0 0 0 4px rgba(239, 68, 68, 0.1); }
+        }
+        
+        .lab-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            transition: color 0.3s ease;
+        }
+        
+        .lab-card.normal .lab-value {
+            color: #059669;
+        }
+        
+        .lab-card.slightly-abnormal .lab-value {
+            color: #d97706;
+        }
+        
+        .lab-card.critical .lab-value {
+            color: #dc2626;
+        }
+        
+        /* Default for unmatched statuses */
+        .lab-card .lab-value {
+            color: var(--text-primary);
+        }
+        
+        .lab-range {
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+        
+        .lab-explanation {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        /* Range Indicator Styles */
+        .range-indicator {
+            margin: 1rem 0;
+            padding: 0.5rem 0;
+        }
+        
+        .range-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+        
+        .range-bar {
+            position: relative;
+            height: 8px;
+            background: #f3f4f6;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.25rem;
+        }
+        
+        .range-normal-zone {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #10b981 100%);
+            opacity: 0.3;
+        }
+        
+        /* Status-specific range zone colors */
+        .lab-card.normal .range-normal-zone {
+            background: linear-gradient(90deg, #10b981 0%, #34d399 50%, #10b981 100%);
+            opacity: 0.4;
+        }
+        
+        .lab-card.slightly-abnormal .range-normal-zone {
+            background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 50%, #f59e0b 100%);
+            opacity: 0.3;
+        }
+        
+        .lab-card.critical .range-normal-zone {
+            background: linear-gradient(90deg, #ef4444 0%, #f87171 50%, #ef4444 100%);
+            opacity: 0.3;
+        }
+        
+        .range-marker {
+            position: absolute;
+            top: -2px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transform: translateX(-50%);
+            transition: all 0.3s ease;
+        }
+        
+        /* Enhanced marker styles for critical values */
+        .lab-card.critical .range-marker {
+            animation: pulse-marker 1.5s infinite;
+        }
+        
+        @keyframes pulse-marker {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.1); }
+        }
+        
+        .range-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .range-min, .range-max {
+            font-weight: 500;
+        }
+        
+        .lifestyle-tip {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: var(--border-radius);
+            border-left: 3px solid var(--primary-color);
+        }
+        
+        .lifestyle-tip h4 {
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .lifestyle-tip p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        
+        .export-section {
+            background: var(--bg-primary);
+            border-radius: var(--border-radius-lg);
+            padding: 2rem;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .export-btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius);
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .export-btn.primary {
+            background: var(--primary-color);
+            color: white;
+        }
+        
+        .export-btn.secondary {
+            background: var(--secondary-color);
+            color: white;
+        }
+        
+        .export-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 400px;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .loading .spinner {
+            border: 4px solid var(--border-color);
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+            .results-container {
+                padding: 1rem;
+            }
+            
+            .chart-header {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: stretch;
+            }
+            
+            .chart-controls {
+                justify-content: center;
+            }
+            
+            .export-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="results-container">
+        <!-- Header -->
+        <div class="results-header">
+            <h1><i class="fas fa-chart-line"></i> Lab Results Analysis</h1>
+            <p id="filename">Loading report...</p>
+        </div>
+        
+        <!-- Loading State -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processing your lab results...</p>
+        </div>
+        
+        <!-- Results Content -->
+        <div id="results-content" style="display: none;">
+            <!-- Summary Cards -->
+            <div class="summary-cards">
+                <div class="summary-card normal">
+                    <div class="icon"><i class="fas fa-check-circle"></i></div>
+                    <div class="count" id="normal-count">0</div>
+                    <div class="label">Normal Results</div>
+                </div>
+                <div class="summary-card abnormal">
+                    <div class="icon"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="count" id="abnormal-count">0</div>
+                    <div class="label">Slightly Abnormal</div>
+                </div>
+                <div class="summary-card critical">
+                    <div class="icon"><i class="fas fa-times-circle"></i></div>
+                    <div class="count" id="critical-count">0</div>
+                    <div class="label">Critical Results</div>
+                </div>
+                <div class="summary-card">
+                    <div class="icon"><i class="fas fa-vial"></i></div>
+                    <div class="count" id="total-count">0</div>
+                    <div class="label">Total Tests</div>
+                </div>
+            </div>
+            
+            <!-- Chart Container -->
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h2 class="chart-title">Lab Values Visualization</h2>
+                    <div class="chart-controls">
+                        <button class="chart-toggle active" data-chart="bar">Bar Chart</button>
+                        <button class="chart-toggle" data-chart="radar">Radar Chart</button>
+                    </div>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="labChart"></canvas>
+                </div>
+            </div>
+            
+            <!-- Lab Details -->
+            <div id="lab-details" class="lab-details">
+                <!-- Lab cards will be inserted here -->
+            </div>
+            
+            <!-- Export Section -->
+            <div class="export-section">
+                <h3 style="margin-bottom: 1rem;">Download Your Results</h3>
+                <div class="export-buttons">
+                    <a href="#" id="export-pdf" class="export-btn primary">
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </a>
+                    <a href="#" id="export-csv" class="export-btn secondary">
+                        <i class="fas fa-file-csv"></i> Download CSV
+                    </a>
+                    <a href="/" class="export-btn" style="background: var(--text-secondary); color: white;">
+                        <i class="fas fa-arrow-left"></i> Back to Upload
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class LabResultsVisualization {
+            constructor() {
+                this.sessionId = '{{ session_id }}';
+                this.labData = [];
+                this.chart = null;
+                this.currentChartType = 'bar';
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.loadData();
+                    this.renderSummary();
+                    this.renderChart();
+                    this.renderLabDetails();
+                    this.setupEventListeners();
+                    this.hideLoading();
+                } catch (error) {
+                    console.error('Error initializing:', error);
+                    this.showError('Failed to load lab results');
+                }
+            }
+            
+            async loadData() {
+                const response = await fetch(`/api/results/${this.sessionId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to load data');
+                }
+                
+                const data = await response.json();
+                this.labData = data.lab_data || [];
+                this.summary = data.summary || {};
+                this.filename = data.filename || 'Unknown';
+                
+                document.getElementById('filename').textContent = `Report: ${this.filename}`;
+            }
+            
+            renderSummary() {
+                document.getElementById('normal-count').textContent = this.summary.normal || 0;
+                document.getElementById('abnormal-count').textContent = this.summary.slightly_abnormal || 0;
+                document.getElementById('critical-count').textContent = this.summary.critical || 0;
+                document.getElementById('total-count').textContent = this.summary.total_tests || 0;
+            }
+            
+            renderChart() {
+                // Check if Chart.js is loaded
+                if (typeof Chart === 'undefined') {
+                    console.error('Chart.js is not loaded');
+                    this.showError('Chart.js library failed to load. Please refresh the page.');
+                    return;
+                }
+                
+                const ctx = document.getElementById('labChart').getContext('2d');
+                
+                if (this.chart) {
+                    this.chart.destroy();
+                }
+                
+                const chartData = this.prepareChartData();
+                
+                try {
+                    if (this.currentChartType === 'bar') {
+                        this.chart = new Chart(ctx, {
+                            type: 'bar',
+                            data: chartData,
+                            options: this.getBarChartOptions()
+                        });
+                    } else if (this.currentChartType === 'radar') {
+                        this.chart = new Chart(ctx, {
+                            type: 'radar',
+                            data: this.prepareRadarData(),
+                            options: this.getRadarChartOptions()
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error creating chart:', error);
+                    this.showError('Failed to create chart visualization.');
+                }
+            }
+            
+            prepareChartData() {
+                const labels = this.labData.map(test => test.test);
+                const values = this.labData.map(test => test.value);
+                
+                // Parse reference ranges
+                const referenceRanges = this.labData.map(test => {
+                    const range = test.range;
+                    // Handle different range formats: "70-100", "<200", ">40", etc.
+                    if (range.includes('-')) {
+                        const parts = range.split('-');
+                        const min = parseFloat(parts[0].replace(/[^\d.-]/g, ''));
+                        const max = parseFloat(parts[1].replace(/[^\d.-]/g, ''));
+                        return {
+                            min: isNaN(min) ? 0 : min,
+                            max: isNaN(max) ? 100 : max
+                        };
+                    } else if (range.startsWith('<')) {
+                        const max = parseFloat(range.replace(/[^\d.-]/g, ''));
+                        return { min: 0, max: isNaN(max) ? 100 : max };
+                    } else if (range.startsWith('>')) {
+                        const min = parseFloat(range.replace(/[^\d.-]/g, ''));
+                        const maxVal = Math.max(...values) * 1.2; // 20% above max value
+                        return { min: isNaN(min) ? 0 : min, max: maxVal };
+                    }
+                    // Try to extract numbers from any format
+                    const numbers = range.match(/\d+\.?\d*/g);
+                    if (numbers && numbers.length >= 2) {
+                        return {
+                            min: parseFloat(numbers[0]),
+                            max: parseFloat(numbers[1])
+                        };
+                    }
+                    return { min: 0, max: 100 }; // Default
+                });
+                
+                const backgroundColors = this.labData.map(test => {
+                    switch (test.status) {
+                        case 'NORMAL': return 'rgba(16, 185, 129, 0.8)';
+                        case 'SLIGHTLY_ABNORMAL': return 'rgba(245, 158, 11, 0.8)';
+                        case 'CRITICAL': return 'rgba(239, 68, 68, 0.8)';
+                        default: return 'rgba(107, 114, 128, 0.8)';
+                    }
+                });
+                
+                // Create datasets
+                const datasets = [
+                    {
+                        label: 'Your Results',
+                        data: values,
+                        backgroundColor: backgroundColors,
+                        borderColor: backgroundColors.map(color => color.replace('0.8', '1')),
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        borderSkipped: false,
+                        order: 1
+                    },
+                    {
+                        label: 'Reference Range (Min)',
+                        data: referenceRanges.map(range => range.min),
+                        backgroundColor: 'rgba(156, 163, 175, 0.3)',
+                        borderColor: 'rgba(156, 163, 175, 0.8)',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        type: 'line',
+                        pointRadius: 0,
+                        order: 3
+                    },
+                    {
+                        label: 'Reference Range (Max)',
+                        data: referenceRanges.map(range => range.max),
+                        backgroundColor: 'rgba(156, 163, 175, 0.3)',
+                        borderColor: 'rgba(156, 163, 175, 0.8)',
+                        borderWidth: 1,
+                        borderDash: [5, 5],
+                        type: 'line',
+                        pointRadius: 0,
+                        order: 3
+                    }
+                ];
+                
+                return {
+                    labels: labels,
+                    datasets: datasets
+                };
+            }
+            
+            prepareRadarData() {
+                // Create normalized data for radar chart
+                const normalizedData = this.labData.map(test => {
+                    const range = test.range;
+                    let min = 0, max = 100;
+                    
+                    // Parse reference ranges
+                    if (range.includes('-')) {
+                        const parts = range.split('-');
+                        min = parseFloat(parts[0].replace(/[^\d.-]/g, ''));
+                        max = parseFloat(parts[1].replace(/[^\d.-]/g, ''));
+                    } else if (range.startsWith('<')) {
+                        max = parseFloat(range.replace(/[^\d.-]/g, ''));
+                        min = 0;
+                    } else if (range.startsWith('>')) {
+                        min = parseFloat(range.replace(/[^\d.-]/g, ''));
+                        max = min * 2; // Estimate max
+                    }
+                    
+                    // Normalize to 0-100 scale where 50 is the midpoint of normal range
+                    const midpoint = (min + max) / 2;
+                    const normalizedValue = 50 + ((test.value - midpoint) / (max - min)) * 50;
+                    return Math.min(100, Math.max(0, normalizedValue));
+                });
+                
+                return {
+                    labels: this.labData.map(test => test.test),
+                    datasets: [
+                        {
+                            label: 'Normal Range Zone',
+                            data: new Array(this.labData.length).fill(75), // Normal zone
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            borderColor: 'rgba(16, 185, 129, 0.3)',
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            fill: true
+                        },
+                        {
+                            label: 'Your Results',
+                            data: normalizedData,
+                            backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                            borderColor: 'rgba(79, 70, 229, 1)',
+                            borderWidth: 3,
+                            pointBackgroundColor: this.labData.map(test => {
+                                switch (test.status) {
+                                    case 'NORMAL': return '#10b981';
+                                    case 'SLIGHTLY_ABNORMAL': return '#f59e0b';
+                                    case 'CRITICAL': return '#ef4444';
+                                    default: return '#6b7280';
+                                }
+                            }),
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 8,
+                            fill: false
+                        }
+                    ]
+                };
+            }
+            
+            getBarChartOptions() {
+                return {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const test = this.labData[context.dataIndex];
+                                    if (context.datasetIndex === 0) {
+                                        // Your results
+                                        return [
+                                            `Your Value: ${test.value} ${test.unit}`,
+                                            `Reference Range: ${test.range}`,
+                                            `Status: ${test.status}`,
+                                            `${test.explanation}`
+                                        ];
+                                    } else {
+                                        // Reference range lines
+                                        return `${context.dataset.label}: ${context.parsed.y} ${test.unit}`;
+                                    }
+                                },
+                                title: (tooltipItems) => {
+                                    return tooltipItems[0].label + ' - Lab Test';
+                                }
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#666',
+                            borderWidth: 1
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 20
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Values',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Lab Tests',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45
+                            }
+                        }
+                    },
+                    elements: {
+                        bar: {
+                            borderWidth: 2
+                        }
+                    }
+                };
+            }
+            
+            getRadarChartOptions() {
+                return {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const test = this.labData[context.dataIndex];
+                                    if (context.datasetIndex === 1) {
+                                        // Your results dataset
+                                        return [
+                                            `${test.test}: ${test.value} ${test.unit}`,
+                                            `Reference Range: ${test.range}`,
+                                            `Status: ${test.status}`,
+                                            `${test.explanation}`
+                                        ];
+                                    } else {
+                                        // Normal range zone
+                                        return 'Normal Range Zone';
+                                    }
+                                }
+                            },
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff'
+                        },
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                padding: 15
+                            }
+                        }
+                    },
+                    scales: {
+                        r: {
+                            beginAtZero: true,
+                            max: 100,
+                            min: 0,
+                            title: {
+                                display: true,
+                                text: 'Relative to Normal Range (%)',
+                                font: {
+                                    size: 12,
+                                    weight: 'bold'
+                                }
+                            },
+                            ticks: {
+                                stepSize: 25,
+                                callback: function(value) {
+                                    if (value === 0) return '0% (Low)';
+                                    if (value === 25) return '25%';
+                                    if (value === 50) return '50% (Normal)';
+                                    if (value === 75) return '75%';
+                                    if (value === 100) return '100% (High)';
+                                    return value + '%';
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            },
+                            angleLines: {
+                                color: 'rgba(0, 0, 0, 0.1)'
+                            }
+                        }
+                    }
+                };
+            }
+            
+            renderLabDetails() {
+                const container = document.getElementById('lab-details');
+                container.innerHTML = '';
+                
+                this.labData.forEach(test => {
+                    const card = this.createLabCard(test);
+                    container.appendChild(card);
+                });
+            }
+            
+            createLabCard(test) {
+                const card = document.createElement('div');
+                card.className = `lab-card ${test.status.toLowerCase().replace('_', '-')}`;
+                
+                // Calculate position within reference range for visual indicator
+                const rangeIndicator = this.createRangeIndicator(test);
+                const lifestyleTip = this.getLifestyleTip(test);
+                
+                card.innerHTML = `
+                    <div class="lab-card-header">
+                        <div class="lab-test-name">${test.test}</div>
+                        <div class="lab-status ${test.status.toLowerCase().replace('_', '-')}">${test.status.replace('_', ' ')}</div>
+                    </div>
+                    <div class="lab-value">${test.value} ${test.unit}</div>
+                    <div class="lab-range">Reference Range: ${test.range}</div>
+                    ${rangeIndicator}
+                    <div class="lab-explanation">${test.explanation}</div>
+                    ${lifestyleTip ? `
+                        <div class="lifestyle-tip">
+                            <h4><i class="fas fa-lightbulb"></i> Lifestyle Tip</h4>
+                            <p>${lifestyleTip}</p>
+                        </div>
+                    ` : ''}
+                `;
+                
+                return card;
+            }
+            
+            createRangeIndicator(test) {
+                const range = test.range;
+                let min, max, position = 50;
+                
+                // Parse reference range with improved logic
+                if (range.includes('-')) {
+                    const parts = range.split('-');
+                    // Extract numbers more carefully
+                    min = parseFloat(parts[0].replace(/[^\d.-]/g, ''));
+                    max = parseFloat(parts[1].replace(/[^\d.-]/g, ''));
+                    
+                    if (!isNaN(min) && !isNaN(max) && max > min) {
+                        position = ((test.value - min) / (max - min)) * 100;
+                    } else {
+                        position = 50; // Default to middle if parsing fails
+                    }
+                } else if (range.startsWith('<')) {
+                    max = parseFloat(range.replace(/[^\d.-]/g, ''));
+                    min = 0;
+                    if (!isNaN(max)) {
+                        position = (test.value / max) * 100;
+                    }
+                } else if (range.startsWith('>')) {
+                    min = parseFloat(range.replace(/[^\d.-]/g, ''));
+                    if (!isNaN(min)) {
+                        position = test.value >= min ? 75 : 25;
+                        max = min * 2; // Estimate max for display
+                    }
+                } else {
+                    // Try to extract any numbers from the range string
+                    const numbers = range.match(/\d+\.?\d*/g);
+                    if (numbers && numbers.length >= 2) {
+                        min = parseFloat(numbers[0]);
+                        max = parseFloat(numbers[1]);
+                        position = ((test.value - min) / (max - min)) * 100;
+                    } else {
+                        return ''; // Can't parse range
+                    }
+                }
+                
+                // Ensure we have valid numbers
+                if (isNaN(min)) min = 0;
+                if (isNaN(max)) max = test.value * 1.5; // Fallback max
+                if (isNaN(position)) position = 50;
+                
+                // Clamp position between 0 and 100
+                position = Math.min(100, Math.max(0, position));
+                
+                // Determine indicator color based on status
+                let indicatorColor;
+                switch (test.status) {
+                    case 'NORMAL': indicatorColor = '#10b981'; break;
+                    case 'SLIGHTLY_ABNORMAL': indicatorColor = '#f59e0b'; break;
+                    case 'CRITICAL': indicatorColor = '#ef4444'; break;
+                    default: indicatorColor = '#6b7280';
+                }
+                
+                return `
+                    <div class="range-indicator">
+                        <div class="range-label">Your result within reference range:</div>
+                        <div class="range-bar">
+                            <div class="range-track"></div>
+                            <div class="range-normal-zone" style="left: 0%; width: 100%;"></div>
+                            <div class="range-marker" style="left: ${position}%; background-color: ${indicatorColor};"></div>
+                        </div>
+                        <div class="range-labels">
+                            <span class="range-min">${isNaN(min) ? 'Low' : min}</span>
+                            <span class="range-max">${isNaN(max) ? 'High' : max}</span>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            getLifestyleTip(test) {
+                const tips = {
+                    'glucose': 'Consider reducing refined sugars and increasing fiber intake. Regular exercise can help improve blood sugar control.',
+                    'cholesterol': 'A heart-healthy diet with omega-3 fatty acids and regular cardio exercise can help manage cholesterol levels.',
+                    'blood pressure': 'Reduce sodium intake, exercise regularly, and practice stress management techniques like meditation.',
+                    'hemoglobin': 'Iron-rich foods like lean meats, spinach, and legumes can help maintain healthy hemoglobin levels.',
+                    'vitamin d': 'Consider safe sun exposure and vitamin D-rich foods like fatty fish and fortified dairy products.'
+                };
+                
+                const testName = test.test.toLowerCase();
+                for (const [key, tip] of Object.entries(tips)) {
+                    if (testName.includes(key)) {
+                        return test.status !== 'NORMAL' ? tip : null;
+                    }
+                }
+                return null;
+            }
+            
+            setupEventListeners() {
+                // Chart type toggles
+                document.querySelectorAll('.chart-toggle').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.chart-toggle').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.currentChartType = e.target.dataset.chart;
+                        this.renderChart();
+                    });
+                });
+                
+                // Export buttons
+                document.getElementById('export-pdf').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.open(`/export_results/${this.sessionId}/pdf`, '_blank');
+                });
+                
+                document.getElementById('export-csv').addEventListener('click', (e) => {
+                    e.preventDefault();
+                    window.open(`/export_results/${this.sessionId}/csv`, '_blank');
+                });
+            }
+            
+            hideLoading() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results-content').style.display = 'block';
+            }
+            
+            showError(message) {
+                document.getElementById('loading').innerHTML = `
+                    <div style="text-align: center; color: var(--danger-color);">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <p>${message}</p>
+                        <a href="/" style="color: var(--primary-color); text-decoration: none;">← Back to Upload</a>
+                    </div>
+                `;
+            }
+        }
+        
+        // Wait for Chart.js to load before initializing
+        function initializeWhenReady() {
+            if (typeof Chart !== 'undefined') {
+                new LabResultsVisualization();
+            } else {
+                setTimeout(initializeWhenReady, 100);
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initializeWhenReady);
+    </script>
+    
+    <!-- Chart.js - Load before our script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-adapter-date-fns/2.0.1/chartjs-adapter-date-fns.bundle.min.js"></script>
+</body>
+</html>

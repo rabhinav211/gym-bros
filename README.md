@@ -179,11 +179,11 @@ Medical Report Simplifier/
 
 ### Common Issues
 
-2. **"Gemini API key not configured"**
+2. **Gemini API key not configured**
    - Make sure you've set the `GEMINI_API_KEY` environment variable
    - Verify the API key is valid and has proper permissions
 
-3. **"Could not extract text from PDF"**
+3. **Could not extract text from PDF**
    - The PDF might be an image/scanned document
    - Ensure Tesseract OCR is properly installed
    - Try a different PDF file

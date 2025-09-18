@@ -1,6 +1,6 @@
 # Medical Report Simplifier
 
-A web application that helps patients understand their medical reports through AI-powered chat interface. Upload a PDF medical Troubleshooting
+A web application that helps patients understand their medical reports through AI-powered chat interface. Upload a PDF.
 
 #### Common Issues
 

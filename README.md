@@ -1,4 +1,4 @@
-# Medical Report Simplifier
+# Aarogya Saathi - A Medical Report Simplifier
 
 A web application that helps patients understand their medical reports through AI-powered chat interface. Upload a PDF.
 

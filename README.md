@@ -21,7 +21,7 @@ A web application that helps patients understand their medical reports through A
    
    **Quick fix**: The issue is usually that `gemini-2.0-flash` isn't available yet. Use `gemini-1.5-flash` instead.
 
-2. **"Gemini API key not configured"**ort and ask questions in simple language to get easy-to-understand explanations.
+2. **Gemini API key not configured** and ask questions in simple language to get easy-to-understand explanations.
 
 ## Features
 
